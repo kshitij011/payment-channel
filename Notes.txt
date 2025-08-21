@@ -1,0 +1,46 @@
+The private key is in hexadecimal format, while signing the message we need private key in bytes format.
+So first convert private key using hexToBytes.
+
+**packedAdressFunction:**
+This function takes:
+addressHex: a hex string like "0xabc123..." (20 bytes).
+amountBigInt: a BigInt representing a uint256.
+
+hexToBytes converts the hex string into a Uint8Array of raw bytes.
+slice(2) removes the "0x" prefix.
+Ethereum addresses must be 20 bytes, so it enforces this check.
+
+This converts the BigInt into a 32-byte big-endian array:
+amt is an empty 32-byte buffer.
+The loop fills it from right to left (index 31 down to 0).
+
+Each iteration:
+x & 0xffn extracts the lowest 8 bits.
+amt[i] stores that byte.
+x >>= 8n shifts the number right by 8 bits.
+So if amountBigInt = 5n, the last byte will be 0x05, and everything else 0x00.
+
+Finally:
+It creates a buffer of length 20 + 32 = 52 bytes.
+Writes the 20-byte address first.
+Writes the 32-byte amount after it.
+Returns the packed result.
+
+
+Once you encode pack the contract address and amount, hash it (52 bytes -> 32 bytes) say innerHash.
+
+Hash the innerHash again by appending Ethereum string (will return 32 bytes hash)
+
+Sign ethHash and private key (in bytes format) with spec256k1
+
+toCompactRawBytes() returns the compact signature bytes as a Uint8Array of 64 bytes: first 32 bytes = r, next 32 bytes = s.
+This is the standard raw ECDSA (r, s) representation (no v yet).
+
+sig65 creates the 65‑byte signature layout used commonly across Ethereum tooling:
+bytes 0–31: r (32 bytes)
+bytes 32–63: s (32 bytes)
+byte 64: v (1 byte, 27 or 28)
+sig65.set(signature, 0) copies the 64 r||s bytes into the first 64 slots; sig65[64] = v appends the v byte.
+
+The signature returned should be in hex format so receiver can pass it to smart contract.
+Convert the sig65 in hex using bytesToHex.
